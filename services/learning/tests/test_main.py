@@ -1,6 +1,15 @@
+from pathlib import Path
+import sys
+
 from fastapi.testclient import TestClient
+
+# Keep imports working when pytest is invoked from the repository root or when
+# its import mode only places the tests directory on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from app.main import app
-client=TestClient(app)
+
+client = TestClient(app)
 def test_mcq_grading():
     r=client.post('/grade/mcq',json={'answers':{'q1':'A'},'answer_key':{'q1':'A','q2':'B'}})
     assert r.status_code==200 and r.json()['percentage']==50
