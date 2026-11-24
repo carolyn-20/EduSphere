@@ -1,12 +1,12 @@
 'use client';
 import {useEffect,useState} from 'react';
 import SiteHeader from '../components/SiteHeader';
-import {API,learnerToken} from '../lib/demo';
+import {learnerFetch} from '../lib/demo';
 
 type Enrollment={course_id:string;title:string;description:string;instructor:string;status:string;lesson_count:number;lessons_completed:number;progress:number};
 export default function LearningPage(){
   const [items,setItems]=useState<Enrollment[]>([]);const [message,setMessage]=useState('Loading your learning…');
-  useEffect(()=>{let active=true;(async()=>{try{const token=await learnerToken();const response=await fetch(`${API}/learning/enrollments`,{headers:{Authorization:`Bearer ${token}`}});const body=await response.json();if(!response.ok)throw new Error(body.error||'Could not load your learning.');if(active){setItems(body.data||[]);setMessage(body.data?.length?'':'You have no enrolled courses yet. Browse the catalog to get started.');}}catch(e){if(active)setMessage(e instanceof Error?e.message:'Could not load your learning.');}})();return()=>{active=false;};},[]);
+  useEffect(()=>{let active=true;(async()=>{try{const response=await learnerFetch('/learning/enrollments');const body=await response.json();if(!response.ok)throw new Error(body.error||'Could not load your learning.');if(active){setItems(body.data||[]);setMessage(body.data?.length?'':'You have no enrolled courses yet. Browse the catalog to get started.');}}catch(e){if(active)setMessage(e instanceof Error?e.message:'Could not load your learning.');}})();return()=>{active=false;};},[]);
   const finished=items.filter(item=>item.status==='completed');const inProgress=items.filter(item=>item.status!=='completed');
   return <main className="shell"><SiteHeader/><section className="page-intro"><div className="tag">LEARNER WORKSPACE</div><h1>My learning</h1><p className="muted">Your enrolled courses and completed learning.</p></section>
     {message&&<p className="notice">{message}</p>}
