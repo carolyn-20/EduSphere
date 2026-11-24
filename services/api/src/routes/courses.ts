@@ -1,0 +1,10 @@
+import { Router } from 'express'; import { pool } from '../db/pool.js'; import { authenticate,allow } from '../middleware/auth.js'; import { z } from 'zod';
+const r=Router();
+r.get('/',async(_req,res)=>{const q=await pool.query(`SELECT c.id,c.title,c.description,c.status,c.price_cents,u.name AS instructor FROM courses c JOIN users u ON u.id=c.instructor_id WHERE c.status='published' ORDER BY c.created_at DESC`);res.json({data:q.rows});});
+r.use(authenticate);
+r.post('/',allow('instructor','author','admin'),async(req,res)=>{const p=z.object({title:z.string().min(3),description:z.string().max(5000).optional()}).safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid course payload'});
+const q=await pool.query('INSERT INTO courses(title,description,instructor_id) VALUES($1,$2,$3) RETURNING *',[p.data.title,p.data.description||'',req.user!.id]);res.status(201).json(q.rows[0]);});
+r.post('/:id/enroll',allow('learner','admin'),async(req,res)=>{try{const q=await pool.query(`INSERT INTO enrollments(learner_id,course_id) SELECT $1,id FROM courses WHERE id=$2 AND status='published' ON CONFLICT(learner_id,course_id) DO UPDATE SET status='active' RETURNING *`,[req.user!.id,req.params.id]);if(!q.rowCount)return res.status(404).json({error:'Published course not found'});res.status(201).json(q.rows[0]);}catch{res.status(400).json({error:'Unable to enroll'});}});
+r.get('/:id/lessons',allow('learner','instructor','author','admin'),async(req,res)=>{const e=await pool.query('SELECT id FROM enrollments WHERE learner_id=$1 AND course_id=$2 AND status=$3',[req.user!.id,req.params.id,'active']);if(req.user!.role==='learner'&&!e.rowCount)return res.status(403).json({error:'Active enrollment required'});
+const q=await pool.query(`SELECT l.id,l.title,l.body,l.video_url,l.position,t.title AS topic FROM lessons l JOIN topics t ON t.id=l.topic_id WHERE t.course_id=$1 ORDER BY t.position,l.position`,[req.params.id]);res.json({data:q.rows});});
+export default r;

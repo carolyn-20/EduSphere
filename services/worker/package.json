@@ -1,0 +1,12 @@
+{
+  "name": "edusphere-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "bullmq": "^5.34.3",
+    "ioredis": "^5.4.2"
+  }
+}
