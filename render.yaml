@@ -1,0 +1,74 @@
+services:
+  - type: web
+    name: edusphere-web
+    runtime: node
+    rootDir: apps/web
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    region: singapore
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: edusphere-api
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: edusphere-api
+    runtime: node
+    rootDir: services/api
+    buildCommand: npm install && npm run build
+    startCommand: npm run db:migrate && npm start
+    healthCheckPath: /ready
+    region: singapore
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: edusphere-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: edusphere-redis
+          property: connectionString
+  - type: pserv
+    name: edusphere-learning
+    runtime: python
+    rootDir: services/learning
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    region: singapore
+
+  - type: worker
+    name: edusphere-worker
+    runtime: node
+    rootDir: services/worker
+    buildCommand: npm install
+    startCommand: npm start
+    region: singapore
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: edusphere-redis
+          property: connectionString
+
+  - type: keyvalue
+    name: edusphere-redis
+    plan: 256mb
+    region: singapore
+    ipAllowList: []
+
+databases:
+  - name: edusphere-db
+    databaseName: edusphere
+    user: edusphere
+    plan: free
+    region: singapore
